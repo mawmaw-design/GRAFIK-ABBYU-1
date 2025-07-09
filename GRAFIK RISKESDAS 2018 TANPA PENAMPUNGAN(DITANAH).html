@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grafik Interaktif Limbah Kamar Mandi (Tema Gelap)</title>
+    <!-- Memuat Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat Chart.js untuk membuat grafik -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Memuat plugin anotasi untuk Chart.js (untuk garis rata-rata) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <!-- Memuat Font (VT323) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        font-family: "VT323", monospace;
+        background-color: #010a01; /* Latar belakang hitam kehijauan */
+        color: #00ff00;
+        /* Efek scanlines untuk nuansa monitor lama */
+        background-image: linear-gradient(
+          rgba(0, 255, 0, 0.1) 2px,
+          transparent 2px
+        );
+        background-size: 100% 4px;
+        animation: flicker 0.15s infinite;
+      }
+
+      @keyframes flicker {
+        0% {
+          opacity: 0.9;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.9;
+        }
+      }
+
+      .container-box {
+        background: rgba(0, 15, 0, 0.7);
+        border: 1px solid #00ff00;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.5),
+          inset 0 0 15px rgba(0, 255, 0, 0.3);
+        backdrop-filter: blur(2px);
+      }
+
+      .control-btn {
+        transition: all 0.2s ease-in-out;
+        border: 1px solid #00ff00;
+        background-color: transparent;
+        color: #00ff00;
+        text-shadow: 0 0 5px #00ff00;
+      }
+      .control-btn:hover {
+        background-color: #00ff00;
+        color: #010a01;
+        box-shadow: 0 0 15px #00ff00;
+      }
+      .control-btn.active {
+        background-color: #00ff00;
+        color: #010a01;
+        font-weight: bold;
+        box-shadow: 0 0 20px #00ff00, inset 0 0 5px #00ff00;
+      }
+    </style>
+  </head>
+  <body class="flex items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
+    <div class="container-box w-full max-w-7xl rounded-lg p-4 sm:p-6 lg:p-8">
+      <!-- Judul Utama -->
+      <div class="text-center mb-6">
+        <h1 class="text-3xl sm:text-4xl font-bold text-green-400 uppercase">
+          Analisis: Limbah Kamar Mandi
+        </h1>
+        <p class="text-md text-green-500 mt-2">
+          Proporsi Pembuangan Tanpa Penampungan // Data Riskesdas 2018
+        </p>
+      </div>
+
+      <!-- Kontrol Interaktif -->
+      <div class="flex flex-wrap justify-center gap-3 sm:gap-4 mb-6">
+        <!-- Kontrol Penyortiran -->
+        <div
+          class="flex flex-wrap justify-center items-center gap-2 bg-black bg-opacity-20 p-2 rounded border border-green-700"
+        >
+          <span class="text-sm font-semibold text-green-400 self-center mx-2"
+            >SORT_BY:</span
+          >
+          <button
+            id="sort-desc"
+            class="control-btn active text-lg px-4 py-1 rounded-none"
+          >
+            Tertinggi
+          </button>
+          <button
+            id="sort-asc"
+            class="control-btn text-lg px-4 py-1 rounded-none"
+          >
+            Terendah
+          </button>
+          <button
+            id="sort-alpha"
+            class="control-btn text-lg px-4 py-1 rounded-none"
+          >
+            Abjad (A-Z)
+          </button>
+        </div>
+        <!-- Kontrol Filter Pulau -->
+        <div
+          class="flex flex-wrap justify-center items-center gap-2 bg-black bg-opacity-20 p-2 rounded border border-green-700"
+        >
+          <span class="text-sm font-semibold text-green-400 self-center mx-2"
+            >FILTER_REGION:</span
+          >
+          <button
+            data-filter="Semua"
+            class="control-btn active text-lg px-4 py-1 rounded-none"
+          >
+            Semua
+          </button>
+          <button
+            data-filter="Sumatra"
+            class="control-btn text-lg px-4 py-1 rounded-none"
+          >
+            Sumatra
+          </button>
+          <button
+            data-filter="Jawa"
+            class="control-btn text-lg px-4 py-1 rounded-none"
+          >
+            Jawa
+          </button>
+          <button
+            data-filter="Kalimantan"
+            class="control-btn text-lg px-4 py-1 rounded-none"
+          >
+            Kalimantan
+          </button>
+          <button
+            data-filter="Sulawesi"
+            class="control-btn text-lg px-4 py-1 rounded-none"
+          >
+            Sulawesi
+          </button>
+          <button
+            data-filter="Nusa Tenggara & Bali"
+            class="control-btn text-lg px-4 py-1 rounded-none"
+          >
+            Bali_NT
+          </button>
+          <button
+            data-filter="Maluku & Papua"
+            class="control-btn text-lg px-4 py-1 rounded-none"
+          >
+            Maluku_Papua
+          </button>
+        </div>
+      </div>
+
+      <!-- Area untuk menempatkan grafik -->
+      <div class="relative h-[700px]">
+        <canvas id="myBarChart"></canvas>
+      </div>
+
+      <!-- Catatan Kaki -->
+      <div class="text-center mt-6">
+        <p class="text-sm text-green-600">DATA_SOURCE: RISKESDAS_2018</p>
+      </div>
+    </div>
+
+    <script>
+      // --- 1. PERSIAPAN DATA (Riskesdas 2018 - Limbah Kamar Mandi) ---
+      const rataRataNasional = 18.9;
+
+      const allData = [
+        { provinsi: "Aceh", persentase: 21.6, pulau: "Sumatra" },
+        { provinsi: "Sumatera Utara", persentase: 15.7, pulau: "Sumatra" },
+        { provinsi: "Sumatera Barat", persentase: 17.8, pulau: "Sumatra" },
+        { provinsi: "Riau", persentase: 23.1, pulau: "Sumatra" },
+        { provinsi: "Jambi", persentase: 19.3, pulau: "Sumatra" },
+        { provinsi: "Sumatera Selatan", persentase: 22.1, pulau: "Sumatra" },
+        { provinsi: "Bengkulu", persentase: 27.5, pulau: "Sumatra" },
+        { provinsi: "Lampung", persentase: 25.4, pulau: "Sumatra" },
+        { provinsi: "Bangka Belitung", persentase: 39.3, pulau: "Sumatra" },
+        { provinsi: "Kepulauan Riau", persentase: 9.2, pulau: "Sumatra" },
+        { provinsi: "DKI Jakarta", persentase: 0.9, pulau: "Jawa" },
+        { provinsi: "Jawa Barat", persentase: 4.5, pulau: "Jawa" },
+        { provinsi: "Jawa Tengah", persentase: 16.7, pulau: "Jawa" },
+        { provinsi: "D.I. Yogyakarta", persentase: 18.0, pulau: "Jawa" },
+        { provinsi: "Jawa Timur", persentase: 21.5, pulau: "Jawa" },
+        { provinsi: "Banten", persentase: 3.5, pulau: "Jawa" },
+        { provinsi: "Bali", persentase: 16.2, pulau: "Nusa Tenggara & Bali" },
+        {
+          provinsi: "Nusa Tenggara Barat",
+          persentase: 25.8,
+          pulau: "Nusa Tenggara & Bali",
+        },
+        {
+          provinsi: "Nusa Tenggara Timur",
+          persentase: 75.0,
+          pulau: "Nusa Tenggara & Bali",
+        },
+        { provinsi: "Kalimantan Barat", persentase: 32.4, pulau: "Kalimantan" },
+        {
+          provinsi: "Kalimantan Tengah",
+          persentase: 38.4,
+          pulau: "Kalimantan",
+        },
+        {
+          provinsi: "Kalimantan Selatan",
+          persentase: 43.6,
+          pulau: "Kalimantan",
+        },
+        { provinsi: "Kalimantan Timur", persentase: 20.7, pulau: "Kalimantan" },
+        { provinsi: "Kalimantan Utara", persentase: 25.8, pulau: "Kalimantan" },
+        { provinsi: "Sulawesi Utara", persentase: 23.7, pulau: "Sulawesi" },
+        { provinsi: "Sulawesi Tengah", persentase: 36.5, pulau: "Sulawesi" },
+        { provinsi: "Sulawesi Selatan", persentase: 37.8, pulau: "Sulawesi" },
+        { provinsi: "Sulawesi Tenggara", persentase: 35.4, pulau: "Sulawesi" },
+        { provinsi: "Gorontalo", persentase: 34.8, pulau: "Sulawesi" },
+        { provinsi: "Sulawesi Barat", persentase: 45.4, pulau: "Sulawesi" },
+        { provinsi: "Maluku", persentase: 40.5, pulau: "Maluku & Papua" },
+        { provinsi: "Maluku Utara", persentase: 41.7, pulau: "Maluku & Papua" },
+        { provinsi: "Papua Barat", persentase: 25.7, pulau: "Maluku & Papua" },
+        { provinsi: "Papua", persentase: 35.8, pulau: "Maluku & Papua" },
+      ];
+
+      let currentData = [...allData];
+
+      // --- 2. KONFIGURASI GRAFIK ---
+      const ctx = document.getElementById("myBarChart").getContext("2d");
+      const chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Proporsi Tanpa Penampungan (%)",
+              data: [],
+              backgroundColor: "rgba(0, 255, 0, 0.4)",
+              borderColor: "rgba(0, 255, 0, 1)",
+              borderWidth: 1,
+              hoverBackgroundColor: "rgba(0, 255, 0, 0.7)",
+              hoverBorderColor: "rgba(127, 255, 127, 1)",
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: "y",
+          scales: {
+            x: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "PROPORSI (%)",
+                color: "#00ff00",
+                font: { size: 18, family: "'VT323', monospace" },
+              },
+              grid: { color: "rgba(0, 255, 0, 0.2)" },
+              ticks: {
+                color: "#00ff00",
+                font: { size: 16, family: "'VT323', monospace" },
+              },
+            },
+            y: {
+              grid: { display: false },
+              ticks: {
+                color: "#90ee90",
+                font: { size: 14, family: "'VT323', monospace" },
+              },
+            },
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              enabled: true,
+              backgroundColor: "rgba(0, 0, 0, 0.9)",
+              titleColor: "#00ff00",
+              bodyColor: "#00ff00",
+              titleFont: { family: "'VT323', monospace", size: 18 },
+              bodyFont: { family: "'VT323', monospace", size: 16 },
+              borderColor: "#00ff00",
+              borderWidth: 1,
+              padding: 10,
+              callbacks: {
+                label: (context) => `Proporsi: ${context.raw.toFixed(1)}%`,
+              },
+            },
+            annotation: {
+              annotations: {
+                line1: {
+                  type: "line",
+                  xMin: rataRataNasional,
+                  xMax: rataRataNasional,
+                  borderColor: "#ff0000",
+                  borderWidth: 2,
+                  borderDash: [6, 6],
+                  label: {
+                    content: `NASIONAL (${rataRataNasional}%)`,
+                    display: true,
+                    position: "end",
+                    backgroundColor: "rgba(255, 0, 0, 0.8)",
+                    color: "#ffffff",
+                    font: {
+                      family: "'VT323', monospace",
+                      size: 16,
+                      weight: "bold",
+                    },
+                    yAdjust: -15,
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // --- 3. FUNGSI INTERAKTIF ---
+      function updateChart(data) {
+        chart.data.labels = data.map((d) => d.provinsi);
+        chart.data.datasets[0].data = data.map((d) => d.persentase);
+        chart.update();
+      }
+
+      function setActiveButton(groupSelector, button) {
+        document
+          .querySelectorAll(groupSelector)
+          .forEach((btn) => btn.classList.remove("active"));
+        button.classList.add("active");
+      }
+
+      document.getElementById("sort-desc").addEventListener("click", (e) => {
+        currentData.sort((a, b) => b.persentase - a.persentase);
+        updateChart(currentData);
+        setActiveButton('[id^="sort-"]', e.target);
+      });
+
+      document.getElementById("sort-asc").addEventListener("click", (e) => {
+        currentData.sort((a, b) => a.persentase - b.persentase);
+        updateChart(currentData);
+        setActiveButton('[id^="sort-"]', e.target);
+      });
+
+      document.getElementById("sort-alpha").addEventListener("click", (e) => {
+        currentData.sort((a, b) => a.provinsi.localeCompare(b.provinsi));
+        updateChart(currentData);
+        setActiveButton('[id^="sort-"]', e.target);
+      });
+
+      document.querySelectorAll("[data-filter]").forEach((button) => {
+        button.addEventListener("click", (e) => {
+          const filter = e.target.getAttribute("data-filter");
+          if (filter === "Semua") {
+            currentData = [...allData];
+          } else {
+            currentData = allData.filter((d) => d.pulau === filter);
+          }
+          const activeSortButton = document.querySelector(
+            '[id^="sort-"].active'
+          );
+          if (activeSortButton) {
+            activeSortButton.click();
+          } else {
+            currentData.sort((a, b) => b.persentase - a.persentase);
+            updateChart(currentData);
+          }
+          setActiveButton("[data-filter]", e.target);
+        });
+      });
+
+      // --- 4. INISIALISASI GRAFIK ---
+      document.getElementById("sort-desc").click();
+    </script>
+  </body>
+</html>
